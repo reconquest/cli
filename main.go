@@ -1,11 +1,5 @@
 package main
 
-import (
-	"log"
-
-	"github.com/kovetskiy/toml"
-)
-
 func main() {
 	Cli(func() {
 		Version("1.0")
@@ -14,76 +8,49 @@ func main() {
 		Flag("-v --version", func() {
 			Description("Show version of program")
 
-			Handle(PrintVersion)
+			Handle(PrintVersion)()
 		})
 
 		Flag("-h --help", func() {
 			Description("Show program help")
 
-			Handle(PrintUsage)
+			Handle(PrintUsage)()
 		})
 
-		var path string
-		var config Config
-		Flag("-c --config", func() {
+		config := Flag("-c --config", func() {
 			Description("Read specified configuration file")
 
 			Default("example.conf")
-
-			Value(&path)
-
-			Call(func() {
-				_, err := toml.DecodeFile(path, &config)
-				if err != nil {
-					log.Fatalf("unable to load toml config: %s", err)
-				}
-			})
 		})
 
-		var program []string
-		Flag("<program>", func() {
+		program := Flag("<program>", func() {
 			Description("Program name or path to start/stop")
-
-			Value(&program)
 		})
 
 		Command("start", func() {
 			Description("Start specified program")
 
-			Required(&program)
+			Required(program)
 
-			Handle(func() {
-				handleStart(
-					config,
-					program,
-				)
-			})
+			Handle(handleStart)(config, program)
 		})
 
 		Command("stop", func() {
-			var signal int
-			Flag("-s --signal", func() {
-				Description("Signal to send when killing process")
-
-				Default(9)
-
-				Value(&signal)
-			})
-
 			Description(
 				"Stop specified program or stop all " +
 					"programs if no <program> specified",
 			)
 
-			Required(&signal)
+			signal := Flag("-s --signal", func() {
+				Description("Signal to send when killing process")
 
-			Handle(func() {
-				handleStop(
-					config,
-					signal,
-					program,
-				)
+				Default(9)
 			})
+
+			Required(program)
+
+			_ = signal
+			Handle(handleStop)(config, program, signal)
 		})
 	})()
 }
