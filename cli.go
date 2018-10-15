@@ -33,14 +33,14 @@ var (
 	Command     fnCommand
 	Required    fnRequired
 
-	parentRequired    = []fnRequired{}
-	parentVersion     = []fnString{}
-	parentDescription = []fnString{}
-	parentFlag        = []fnFlag{}
-	parentHandle      = []fnHandle{}
-	parentDefault     = []fnAny{}
-	parentValue       = []fnAny{}
-	parentCommand     = []fnCommand{}
+	stackRequired    = []fnRequired{}
+	stackVersion     = []fnString{}
+	stackDescription = []fnString{}
+	stackFlag        = []fnFlag{}
+	stackHandle      = []fnHandle{}
+	stackDefault     = []fnAny{}
+	stackValue       = []fnAny{}
+	stackCommand     = []fnCommand{}
 )
 
 type flag struct {
@@ -154,7 +154,7 @@ func newFlag(name string, callback fn) *flag {
 	result := flag{}
 	result.name = name
 
-	remember()
+	pushStack()
 
 	Description = setString(&result.description)
 	Default = setAny(&result.defaultValue)
@@ -163,7 +163,7 @@ func newFlag(name string, callback fn) *flag {
 
 	callback()
 
-	restore()
+	popStack()
 
 	return &result
 }
@@ -173,7 +173,7 @@ func newCommand(name string, callback fn) command {
 	result.name = name
 	result.handler.parent = `command "` + name + `"`
 
-	remember()
+	pushStack()
 
 	Description = setString(&result.description)
 	Handle = setHandle(&result.handler)
@@ -186,7 +186,7 @@ func newCommand(name string, callback fn) command {
 
 	callback()
 
-	restore()
+	popStack()
 
 	err := validateHandler(&result.handler)
 	if err != nil {
@@ -305,35 +305,35 @@ func getFuncName(value reflect.Value) string {
 	return name
 }
 
-func remember() {
-	parentRequired = append(parentRequired, Required)
-	parentVersion = append(parentVersion, Version)
-	parentDescription = append(parentDescription, Description)
-	parentFlag = append(parentFlag, Flag)
-	parentHandle = append(parentHandle, Handle)
-	parentDefault = append(parentDefault, Default)
-	parentValue = append(parentValue, Value)
-	parentCommand = append(parentCommand, Command)
+func pushStack() {
+	stackRequired = append(stackRequired, Required)
+	stackVersion = append(stackVersion, Version)
+	stackDescription = append(stackDescription, Description)
+	stackFlag = append(stackFlag, Flag)
+	stackHandle = append(stackHandle, Handle)
+	stackDefault = append(stackDefault, Default)
+	stackValue = append(stackValue, Value)
+	stackCommand = append(stackCommand, Command)
 }
 
-func restore() {
-	size := len(parentRequired)
+func popStack() {
+	size := len(stackRequired)
 
-	Required = parentRequired[size-1]
-	Version = parentVersion[size-1]
-	Description = parentDescription[size-1]
-	Flag = parentFlag[size-1]
-	Handle = parentHandle[size-1]
-	Default = parentDefault[size-1]
-	Value = parentValue[size-1]
-	Command = parentCommand[size-1]
+	Required = stackRequired[size-1]
+	Version = stackVersion[size-1]
+	Description = stackDescription[size-1]
+	Flag = stackFlag[size-1]
+	Handle = stackHandle[size-1]
+	Default = stackDefault[size-1]
+	Value = stackValue[size-1]
+	Command = stackCommand[size-1]
 
-	parentRequired = parentRequired[:size-1]
-	parentVersion = parentVersion[:size-1]
-	parentDescription = parentDescription[:size-1]
-	parentFlag = parentFlag[:size-1]
-	parentHandle = parentHandle[:size-1]
-	parentDefault = parentDefault[:size-1]
-	parentValue = parentValue[:size-1]
-	parentCommand = parentCommand[:size-1]
+	stackRequired = stackRequired[:size-1]
+	stackVersion = stackVersion[:size-1]
+	stackDescription = stackDescription[:size-1]
+	stackFlag = stackFlag[:size-1]
+	stackHandle = stackHandle[:size-1]
+	stackDefault = stackDefault[:size-1]
+	stackValue = stackValue[:size-1]
+	stackCommand = stackCommand[:size-1]
 }
