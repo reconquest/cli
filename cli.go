@@ -24,27 +24,34 @@ type (
 )
 
 var (
-	Version     fnString
+	Name        fnString
 	Description fnString
+	Version     fnString
 	Flag        fnFlag
+	Option      fnFlag
+	Argument    fnFlag
 	Handle      fnHandle
 	Default     fnAny
 	Value       fnAny
 	Command     fnCommand
 	Required    fnRequired
 
-	stackRequired    = []fnRequired{}
-	stackVersion     = []fnString{}
+	stackName        = []fnString{}
 	stackDescription = []fnString{}
+	stackVersion     = []fnString{}
 	stackFlag        = []fnFlag{}
+	stackOption      = []fnFlag{}
+	stackArgument    = []fnFlag{}
 	stackHandle      = []fnHandle{}
 	stackDefault     = []fnAny{}
 	stackValue       = []fnAny{}
 	stackCommand     = []fnCommand{}
+	stackRequired    = []fnRequired{}
 )
 
 type flag struct {
 	name         string
+	option       bool
 	description  string
 	defaultValue any
 	value        any
@@ -71,12 +78,9 @@ type handler struct {
 var (
 	globalVersion     string
 	globalDescription string
+	globalName        string
 
-	globalFlags    []*flag
-	globalCommands []command
-
-	globalHandler handler
-	globalCalls   []fn
+	global = command{}
 )
 
 func setVersion(value string) {
@@ -100,39 +104,91 @@ func PrintVersion() {
 }
 
 func PrintUsage() {
-	fmt.Println(globalVersion)
-	fmt.Println(globalDescription)
-	fmt.Println("some usage")
+	fmt.Printf(
+		"%s - %s\n\n%s\n\nUsage:\n%s\n\nOptions:\n%s\n",
+		globalName,
+		globalVersion,
+		globalDescription,
+		getUsage(),
+		getOptions(global),
+	)
 }
+
+func getUsage() string {
+	return "\tusage"
+}
+
+func getOptions(cmd command) string {
+	lines := []string{}
+	for _, flag := range cmd.flags {
+		var line string
+		if flag.option {
+			line = flag.name + " <value> "
+
+			withoutDesc := len(line)
+
+			line += flag.description
+
+			if flag.defaultValue != nil {
+				line += fmt.Sprintf(
+					"\n%s[default: %v]",
+					strings.Repeat(" ", withoutDesc),
+					flag.defaultValue,
+				)
+			}
+		} else {
+			line = flag.name + " " + flag.description
+		}
+
+		lines = append(lines, line)
+	}
+
+	for _, command := range cmd.commands {
+		line := fmt.Sprintf("%s %s", command.name, command.description)
+		lines = append(lines, line)
+		lines = append(lines, getOptions(command))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+//func indent(lines []string, shift string) []string {
+//    for key, value := range lines {
+//        if strings.Contains(value, "\n") {
+//            values := strings.Split(value, "\n")
+//            values = indent(values, shift)
+//        }
+//        lines[key] = shift + value
+//    }
+//    return lines
+//}
 
 func Cli(call fn) fn {
 	Version = setVersion
 	Description = setString(&globalDescription)
+	Name = setString(&globalName)
 
-	Flag = addFlag(&globalFlags)
-	Command = addCommand(&globalCommands)
-	Handle = setHandle(&globalHandler)
+	Flag = addFlag(&global.flags, false)
+	Option = addFlag(&global.flags, true)
+	Command = addCommand(&global.commands)
+	Handle = setHandle(&global.handler)
 
 	call()
 
 	return func() {
-		validate()
+		PrintUsage()
 		//spew.Dump(globalFlags)
 		//spew.Dump(globalCommands)
 	}
 }
 
-func validate() {
-
-}
-
-func addFlag(to *[]*flag) fnFlag {
+func addFlag(to *[]*flag, option bool) fnFlag {
 	return func(name string, callback fn) *flag {
 		if to == nil {
 			*to = []*flag{}
 		}
 
-		unit := newFlag(name, callback)
+		unit := newFlag(name, callback, option)
 
 		*to = append(*to, unit)
 
@@ -150,9 +206,10 @@ func addCommand(to *[]command) func(string, fn) {
 	}
 }
 
-func newFlag(name string, callback fn) *flag {
+func newFlag(name string, callback fn, option bool) *flag {
 	result := flag{}
 	result.name = name
+	result.option = option
 
 	pushStack()
 
@@ -182,7 +239,8 @@ func newCommand(name string, callback fn) command {
 		result.required = append(result.required, value)
 	}
 
-	Flag = addFlag(&result.flags)
+	Flag = addFlag(&result.flags, false)
+	Option = addFlag(&result.flags, true)
 
 	callback()
 
@@ -306,34 +364,37 @@ func getFuncName(value reflect.Value) string {
 }
 
 func pushStack() {
-	stackRequired = append(stackRequired, Required)
-	stackVersion = append(stackVersion, Version)
+	stackName = append(stackName, Name)
 	stackDescription = append(stackDescription, Description)
+	stackVersion = append(stackVersion, Version)
 	stackFlag = append(stackFlag, Flag)
 	stackHandle = append(stackHandle, Handle)
 	stackDefault = append(stackDefault, Default)
 	stackValue = append(stackValue, Value)
 	stackCommand = append(stackCommand, Command)
+	stackRequired = append(stackRequired, Required)
 }
 
 func popStack() {
-	size := len(stackRequired)
+	size := len(stackName)
 
-	Required = stackRequired[size-1]
-	Version = stackVersion[size-1]
+	Name = stackName[size-1]
 	Description = stackDescription[size-1]
+	Version = stackVersion[size-1]
 	Flag = stackFlag[size-1]
 	Handle = stackHandle[size-1]
 	Default = stackDefault[size-1]
 	Value = stackValue[size-1]
 	Command = stackCommand[size-1]
+	Required = stackRequired[size-1]
 
-	stackRequired = stackRequired[:size-1]
-	stackVersion = stackVersion[:size-1]
+	stackName = stackName[:size-1]
 	stackDescription = stackDescription[:size-1]
+	stackVersion = stackVersion[:size-1]
 	stackFlag = stackFlag[:size-1]
 	stackHandle = stackHandle[:size-1]
 	stackDefault = stackDefault[:size-1]
 	stackValue = stackValue[:size-1]
 	stackCommand = stackCommand[:size-1]
+	stackRequired = stackRequired[:size-1]
 }

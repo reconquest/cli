@@ -2,6 +2,7 @@ package main
 
 func main() {
 	Cli(func() {
+		Name("the-cli")
 		Version("1.0")
 		Description("Example of cli with DSL")
 
@@ -17,13 +18,13 @@ func main() {
 			Handle(PrintUsage)()
 		})
 
-		config := Flag("-c --config", func() {
+		config := Option("-c --config", func() {
 			Description("Read specified configuration file")
 
 			Default("example.conf")
 		})
 
-		program := Flag("<program>", func() {
+		program := Argument("<program>", func() {
 			Description("Program name or path to start/stop")
 		})
 
@@ -41,7 +42,7 @@ func main() {
 					"programs if no <program> specified",
 			)
 
-			signal := Flag("-s --signal", func() {
+			signal := Option("-s --signal", func() {
 				Description("Signal to send when killing process")
 
 				Default(9)
